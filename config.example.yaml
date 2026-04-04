@@ -1,0 +1,30 @@
+server:
+  host: "0.0.0.0"
+  port: 8989
+  base_url: ""  # For reverse proxy, e.g. "/sodar"
+
+database:
+  path: "./data/sodar.db"
+
+llm:
+  # Any OpenAI-compatible endpoint (OpenRouter, LiteLLM, local, etc.)
+  base_url: "https://api.openai.com/v1"
+  api_key: ""  # Or set SODAR_LLM__API_KEY env var
+  model: "gpt-4o-mini"
+  max_batch_size: 30
+
+media:
+  root_folders_movies:
+    - "/movies"
+  root_folders_series:
+    - "/tv"
+  rename_movies: "{title} ({year})/{title} ({year}) - {quality}.{ext}"
+  rename_episodes: "{series}/Season {season:02}/{series} - S{season:02}E{episode:02} - {episode_title}.{ext}"
+
+scheduler:
+  rss_sync_interval_minutes: 15
+  search_missing_interval_hours: 6
+  import_check_interval_seconds: 60
+
+auth:
+  api_key: ""  # Protect the API; empty = no auth
