@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="logo.svg" alt="sodar logo" width="200">
+  <img src="logo.svg" alt="sodar logo" width="600">
 </p>
 
 # sodar
