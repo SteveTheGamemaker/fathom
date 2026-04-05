@@ -8,6 +8,7 @@ from alembic import context
 
 from sodar.models.base import Base
 import sodar.models.release  # noqa: F401 — register models for autogenerate
+import sodar.models.indexer  # noqa: F401
 
 config = context.config
 
