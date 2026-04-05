@@ -38,8 +38,12 @@ async def client():
 
     app = create_app()
 
-    # Run lifespan manually (creates tables + seeds data)
+    # Run lifespan manually (creates tables + seeds data + starts scheduler)
     async with app.router.lifespan_context(app):
+        # Stop the scheduler during tests — we don't want background jobs firing
+        from sodar.scheduler.setup import stop_scheduler
+        stop_scheduler()
+
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as c:
             yield c

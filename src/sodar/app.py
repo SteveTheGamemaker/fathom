@@ -37,7 +37,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     async with db.engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     await _seed_quality_profiles()
+
+    # Start background scheduler
+    from sodar.scheduler.setup import start_scheduler, stop_scheduler
+    start_scheduler()
+
     yield
+
+    stop_scheduler()
     await db.engine.dispose()
 
 
