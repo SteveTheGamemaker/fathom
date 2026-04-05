@@ -11,6 +11,7 @@ import sodar.models.release  # noqa: F401 — register models for autogenerate
 import sodar.models.indexer  # noqa: F401
 import sodar.models.media  # noqa: F401
 import sodar.models.quality  # noqa: F401
+import sodar.models.download  # noqa: F401
 
 config = context.config
 

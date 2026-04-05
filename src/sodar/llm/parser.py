@@ -1,8 +1,8 @@
 """Batch release name parser — orchestrates the full pipeline:
 
-    1. Regex fallback (free, instant)
-    2. DB parse cache (free, fast)
-    3. LLM batch parse (paid, smart)
+    1. DB parse cache (free, instant — deduplicates repeated names)
+    2. LLM batch parse (primary parser)
+    3. Regex fallback (only when LLM is unavailable or fails)
 
 Returns a dict mapping raw_title -> parsed result dict for every input.
 """
@@ -79,63 +79,16 @@ async def _llm_batch_parse(release_names: list[str]) -> list[dict]:
     return parsed
 
 
-async def parse_releases(
-    session: AsyncSession,
-    release_names: list[str],
-) -> dict[str, dict]:
-    """Parse a batch of release names through the full pipeline.
-
-    Returns a dict mapping raw_title -> parsed result dict.
-    """
-    if not release_names:
-        return {}
-
-    results: dict[str, dict] = {}
-    remaining: list[str] = []
-
-    # Step 1: Regex fallback
-    regex_results = []
+def _regex_fallback_batch(release_names: list[str]) -> dict[str, dict]:
+    """Last resort — parse with regex when LLM is unavailable."""
+    results = {}
     for name in release_names:
         fb = fallback.try_parse(name)
         if fb is not None:
             d = _fallback_to_dict(name, fb)
             d["parse_method"] = "regex_fallback"
             results[name] = d
-            regex_results.append(d)
         else:
-            remaining.append(name)
-
-    log.info(
-        "Regex fallback: %d/%d parsed, %d remaining",
-        len(regex_results), len(release_names), len(remaining),
-    )
-
-    # Store regex results in cache
-    if regex_results:
-        await cache.store(session, regex_results, parse_method="regex_fallback")
-
-    if not remaining:
-        return results
-
-    # Step 2: DB cache lookup
-    cached = await cache.lookup(session, remaining)
-    for name in list(remaining):
-        if name in cached:
-            results[name] = _cached_to_dict(cached[name])
-            remaining.remove(name)
-
-    log.info(
-        "Cache hits: %d, still remaining: %d",
-        len(cached), len(remaining),
-    )
-
-    if not remaining:
-        return results
-
-    # Step 3: LLM batch parse
-    if not settings.llm.api_key:
-        log.warning("No LLM API key configured — %d releases left unparsed", len(remaining))
-        for name in remaining:
             results[name] = {
                 "raw_title": name,
                 "title": name,
@@ -151,39 +104,72 @@ async def parse_releases(
                 "is_repack": False,
                 "parse_method": "unparsed",
             }
+    return results
+
+
+async def parse_releases(
+    session: AsyncSession,
+    release_names: list[str],
+) -> dict[str, dict]:
+    """Parse a batch of release names through the full pipeline.
+
+    Returns a dict mapping raw_title -> parsed result dict.
+    """
+    if not release_names:
+        return {}
+
+    results: dict[str, dict] = {}
+
+    # Step 1: DB cache lookup
+    cached = await cache.lookup(session, release_names)
+    remaining = []
+    for name in release_names:
+        if name in cached:
+            results[name] = _cached_to_dict(cached[name])
+        else:
+            remaining.append(name)
+
+    log.info("Cache: %d hits, %d remaining", len(cached), len(remaining))
+
+    if not remaining:
         return results
 
-    # Batch in chunks
-    batch_size = settings.llm.max_batch_size
-    for i in range(0, len(remaining), batch_size):
-        batch = remaining[i : i + batch_size]
-        llm_results = await _llm_batch_parse(batch)
+    # Step 2: LLM batch parse (primary)
+    if settings.llm.api_key:
+        batch_size = settings.llm.max_batch_size
+        llm_failed = []
 
-        # Store in cache
-        if llm_results:
-            await cache.store(session, llm_results, parse_method="llm")
+        for i in range(0, len(remaining), batch_size):
+            batch = remaining[i : i + batch_size]
+            llm_results = await _llm_batch_parse(batch)
 
-        for r in llm_results:
-            r["parse_method"] = "llm"
-            results[r["raw_title"]] = r
+            if llm_results:
+                await cache.store(session, llm_results, parse_method="llm")
+                for r in llm_results:
+                    r["parse_method"] = "llm"
+                    results[r["raw_title"]] = r
 
-    # Any names that the LLM didn't return results for
-    for name in remaining:
-        if name not in results:
-            results[name] = {
-                "raw_title": name,
-                "title": name,
-                "year": None,
-                "season": None,
-                "episode": None,
-                "quality": "unknown",
-                "codec": None,
-                "source": None,
-                "resolution": None,
-                "release_group": None,
-                "is_proper": False,
-                "is_repack": False,
-                "parse_method": "failed",
-            }
+            # Track any names the LLM didn't return results for
+            parsed_names = {r["raw_title"] for r in llm_results}
+            for name in batch:
+                if name not in parsed_names:
+                    llm_failed.append(name)
+
+        remaining = llm_failed
+        if not remaining:
+            return results
+
+        log.warning("LLM failed to parse %d releases, falling back to regex", len(remaining))
+    else:
+        log.warning("No LLM API key configured, using regex fallback for %d releases", len(remaining))
+
+    # Step 3: Regex fallback (when LLM is unavailable or failed)
+    fb_results = _regex_fallback_batch(remaining)
+    results.update(fb_results)
+
+    # Cache the regex results too
+    cacheable = [r for r in fb_results.values() if r["parse_method"] == "regex_fallback"]
+    if cacheable:
+        await cache.store(session, cacheable, parse_method="regex_fallback")
 
     return results

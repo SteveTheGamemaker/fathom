@@ -184,7 +184,7 @@ def _extract_title(name: str, year_match: re.Match | None) -> str:
         raw = name[:stop_pos]
 
     # Clean up
-    title = raw.replace(".", " ").replace("_", " ").strip(" -")
+    title = raw.replace(".", " ").replace("_", " ").strip(" -()")
 
     return title.strip()
 
