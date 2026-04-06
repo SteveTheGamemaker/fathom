@@ -93,6 +93,16 @@ async def movies_page(request: Request, session: AsyncSession = Depends(get_db_s
     result = await session.execute(select(Movie).order_by(Movie.sort_title))
     movies = result.scalars().all()
 
+    # Build a map of movie_id -> download status for active downloads
+    active_statuses = ("queued", "downloading")
+    dl_result = await session.execute(
+        select(DownloadRecord)
+        .where(DownloadRecord.media_type == "movie")
+        .where(DownloadRecord.movie_id.isnot(None))
+        .where(DownloadRecord.status.in_(active_statuses))
+    )
+    download_status = {r.movie_id: r.status for r in dl_result.scalars().all()}
+
     profiles_result = await session.execute(select(QualityProfile))
     profiles = profiles_result.scalars().all()
 
@@ -102,6 +112,7 @@ async def movies_page(request: Request, session: AsyncSession = Depends(get_db_s
         "movies": movies,
         "profiles": profiles,
         "root_folders": settings.media.root_folders_movies,
+        "download_status": download_status,
     })
 
 
@@ -360,6 +371,47 @@ async def web_add_series(request: Request, session: AsyncSession = Depends(get_d
         folder_name=_default_folder(title, year),
     )
     session.add(series)
+    await session.flush()  # get series.id before adding seasons
+
+    # Fetch seasons & episodes from TMDB
+    if tmdb_id:
+        from fathom.services.metadata_service import TMDBService
+        tmdb = TMDBService(settings.tmdb.api_key)
+        try:
+            tv_info = await tmdb.get_tv(tmdb_id)
+            for s_info in tv_info.get("seasons", []):
+                season = Season(
+                    series_id=series.id,
+                    season_number=s_info["season_number"],
+                    monitored=s_info["season_number"] > 0,  # skip specials by default
+                )
+                session.add(season)
+                await session.flush()
+
+                episodes = await tmdb.get_tv_season(tmdb_id, s_info["season_number"])
+                for ep_info in episodes:
+                    air_date = None
+                    if ep_info.get("air_date"):
+                        from datetime import date as date_type
+                        try:
+                            air_date = date_type.fromisoformat(ep_info["air_date"])
+                        except ValueError:
+                            pass
+                    episode = Episode(
+                        season_id=season.id,
+                        series_id=series.id,
+                        episode_number=ep_info["episode_number"],
+                        title=ep_info.get("title"),
+                        air_date=air_date,
+                        overview=ep_info.get("overview") or None,
+                        monitored=season.monitored,
+                    )
+                    session.add(episode)
+        except Exception:
+            log.exception("Failed to fetch seasons/episodes from TMDB for %s", title)
+        finally:
+            await tmdb.close()
+
     await session.commit()
 
     return RedirectResponse("/series", status_code=303)

@@ -5,10 +5,15 @@ A release name always parses to the same result, so this cache never invalidates
 
 from __future__ import annotations
 
+import logging
+
 from sqlalchemy import select
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fathom.models.release import ParsedRelease
+
+log = logging.getLogger(__name__)
 
 
 async def lookup(session: AsyncSession, raw_titles: list[str]) -> dict[str, ParsedRelease]:
@@ -38,29 +43,33 @@ async def store(
     raw_titles = [r["raw_title"] for r in results]
     existing = await lookup(session, raw_titles)
 
-    new_records = []
+    new_rows = []
     for r in results:
         if r["raw_title"] in existing:
             continue
-        record = ParsedRelease(
-            raw_title=r["raw_title"],
-            parsed_title=r["title"],
-            year=r.get("year"),
-            season=r.get("season"),
-            episode=r.get("episode"),
-            quality=r.get("quality", "unknown"),
-            codec=r.get("codec"),
-            source=r.get("source"),
-            resolution=r.get("resolution"),
-            release_group=r.get("release_group"),
-            is_proper=r.get("is_proper", False),
-            is_repack=r.get("is_repack", False),
-            parse_method=parse_method,
-        )
-        session.add(record)
-        new_records.append(record)
+        new_rows.append({
+            "raw_title": r["raw_title"],
+            "parsed_title": r["title"],
+            "year": r.get("year"),
+            "season": r.get("season"),
+            "episode": r.get("episode"),
+            "quality": r.get("quality", "unknown"),
+            "codec": r.get("codec"),
+            "source": r.get("source"),
+            "resolution": r.get("resolution"),
+            "release_group": r.get("release_group"),
+            "is_proper": r.get("is_proper", False),
+            "is_repack": r.get("is_repack", False),
+            "parse_method": parse_method,
+        })
 
-    if new_records:
+    if new_rows:
+        stmt = sqlite_insert(ParsedRelease).values(new_rows).on_conflict_do_nothing(
+            index_elements=["raw_title"]
+        )
+        await session.execute(stmt)
         await session.flush()
 
-    return new_records
+    # Return all records (cached + newly inserted)
+    all_cached = await lookup(session, raw_titles)
+    return list(all_cached.values())

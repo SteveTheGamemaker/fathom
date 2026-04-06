@@ -27,7 +27,11 @@
         {% endif %}
         {% if not movie.file_path %}
         <div class="media-status">
+            {% if download_status.get(movie.id) %}
+            <span class="badge badge-blue">{{ download_status[movie.id] }}</span>
+            {% else %}
             <span class="badge badge-orange">wanted</span>
+            {% endif %}
         </div>
         {% endif %}
         <div class="media-info">

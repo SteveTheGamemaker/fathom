@@ -31,15 +31,19 @@ async def scheduler_status() -> dict:
 @router.post("/scheduler/{job_id}/run")
 async def trigger_job(job_id: str) -> dict:
     """Manually trigger a scheduler job to run now."""
-    from fathom.scheduler.setup import scheduler
+    from fathom.scheduler.rss_sync import rss_sync_job
+    from fathom.scheduler.search_missing import search_missing_job
+    from fathom.scheduler.import_check import import_check_job
 
-    job = scheduler.get_job(job_id)
-    if not job:
+    jobs = {
+        "rss_sync": rss_sync_job,
+        "search_missing": search_missing_job,
+        "import_check": import_check_job,
+    }
+    fn = jobs.get(job_id)
+    if not fn:
         from fastapi import HTTPException
         raise HTTPException(404, f"Job '{job_id}' not found")
 
-    job.modify(next_run_time=None)  # triggers immediate run
-    # Actually, APScheduler's way to run now:
-    from datetime import datetime, timezone
-    job.modify(next_run_time=datetime.now(timezone.utc))
+    await fn()
     return {"message": f"Job '{job_id}' triggered"}
