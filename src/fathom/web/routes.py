@@ -101,6 +101,7 @@ async def movies_page(request: Request, session: AsyncSession = Depends(get_db_s
         "active_page": "movies",
         "movies": movies,
         "profiles": profiles,
+        "root_folders": settings.media.root_folders_movies,
     })
 
 
@@ -121,6 +122,7 @@ async def series_page(request: Request, session: AsyncSession = Depends(get_db_s
         "active_page": "series",
         "series_list": series_list,
         "profiles": profiles,
+        "root_folders": settings.media.root_folders_series,
     })
 
 

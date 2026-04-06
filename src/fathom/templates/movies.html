@@ -99,7 +99,11 @@
                 </div>
                 <div class="form-group">
                     <label>Root Folder</label>
-                    <input type="text" name="root_folder" value="/movies">
+                    <select name="root_folder">
+                        {% for folder in root_folders %}
+                        <option value="{{ folder }}">{{ folder }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
                 <div class="modal-footer" style="padding: 12px 0 0;">
                     <button type="button" class="btn" onclick="document.getElementById('add-movie-modal').style.display='none'">Cancel</button>

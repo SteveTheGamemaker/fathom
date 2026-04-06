@@ -4,8 +4,10 @@ from contextlib import asynccontextmanager
 from collections.abc import AsyncGenerator
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from sqlalchemy import select
 
@@ -52,6 +54,27 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     await db.engine.dispose()
 
 
+class ApiKeyMiddleware(BaseHTTPMiddleware):
+    """Require API key for /api/ routes when auth.api_key is configured."""
+
+    async def dispatch(self, request: Request, call_next):
+        from fathom.config import settings
+        api_key = settings.auth.api_key
+        if not api_key:
+            return await call_next(request)
+
+        path = request.url.path
+        if not path.startswith("/api/"):
+            return await call_next(request)
+
+        # Check header or query param
+        provided = request.headers.get("X-Api-Key") or request.query_params.get("apikey")
+        if provided != api_key:
+            return JSONResponse(status_code=401, content={"detail": "Invalid or missing API key"})
+
+        return await call_next(request)
+
+
 def create_app() -> FastAPI:
     app = FastAPI(
         title="Fathom",
@@ -59,6 +82,8 @@ def create_app() -> FastAPI:
         version="0.1.0",
         lifespan=lifespan,
     )
+
+    app.add_middleware(ApiKeyMiddleware)
     app.include_router(api_router)
 
     # Web UI
