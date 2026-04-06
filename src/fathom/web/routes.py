@@ -31,6 +31,67 @@ templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 router = APIRouter()
 
+# Register template globals after helpers are defined (below)
+
+
+async def _fetch_download_progress(session, records: list) -> dict:
+    """Fetch live progress from download clients for active records.
+
+    Returns a dict mapping record.id -> {progress, speed, eta}.
+    """
+    if not records:
+        return {}
+
+    from fathom.downloaders import make_downloader
+
+    # Group by client
+    by_client: dict[int, list] = {}
+    for r in records:
+        if r.download_id:
+            by_client.setdefault(r.download_client_id, []).append(r)
+
+    progress_map = {}
+    for client_id, client_records in by_client.items():
+        dl_client = await session.get(DownloadClient, client_id)
+        if not dl_client:
+            continue
+        downloader = make_downloader(dl_client)
+        if not downloader:
+            continue
+        try:
+            for record in client_records:
+                status = await downloader.get_status(record.download_id)
+                if status:
+                    progress_map[record.id] = {
+                        "progress": round(status.progress * 100, 1),
+                        "speed": status.download_speed,
+                        "eta": status.eta,
+                    }
+        except Exception:
+            log.exception("Failed to fetch progress for client %d", client_id)
+        finally:
+            await downloader.close()
+
+    return progress_map
+
+
+def _format_speed(speed_bytes: int) -> str:
+    if speed_bytes >= 1_000_000:
+        return f"{speed_bytes / 1_000_000:.1f} MB/s"
+    elif speed_bytes >= 1_000:
+        return f"{speed_bytes / 1_000:.0f} KB/s"
+    return f"{speed_bytes} B/s"
+
+
+def _format_eta(seconds: int | None) -> str:
+    if seconds is None or seconds <= 0:
+        return ""
+    if seconds >= 3600:
+        return f"{seconds // 3600}h {(seconds % 3600) // 60}m"
+    if seconds >= 60:
+        return f"{seconds // 60}m {seconds % 60}s"
+    return f"{seconds}s"
+
 
 # ─── Page Routes ────────────────────────────────────────────────
 
@@ -60,6 +121,10 @@ async def dashboard(request: Request, session: AsyncSession = Depends(get_db_ses
     )
     history = history_result.scalars().all()
 
+    # Fetch live progress for active items in history
+    active_in_history = [r for r in history if r.status in ("queued", "downloading")]
+    progress_map = await _fetch_download_progress(session, active_in_history)
+
     # Scheduler info
     scheduler_jobs = []
     try:
@@ -84,6 +149,9 @@ async def dashboard(request: Request, session: AsyncSession = Depends(get_db_ses
         "indexer_count": indexer_count,
         "indexers_enabled": indexers_enabled,
         "history": history,
+        "progress": progress_map,
+        "format_speed": _format_speed,
+        "format_eta": _format_eta,
         "scheduler_jobs": scheduler_jobs,
     })
 
@@ -154,6 +222,9 @@ async def queue_page(request: Request, session: AsyncSession = Depends(get_db_se
     )
     queue = queue_result.scalars().all()
 
+    # Fetch live progress from download clients
+    progress_map = await _fetch_download_progress(session, queue)
+
     history_result = await session.execute(
         select(DownloadRecord).order_by(DownloadRecord.added_at.desc()).limit(50)
     )
@@ -164,6 +235,9 @@ async def queue_page(request: Request, session: AsyncSession = Depends(get_db_se
         "active_page": "queue",
         "queue": queue,
         "history": history,
+        "progress": progress_map,
+        "format_speed": _format_speed,
+        "format_eta": _format_eta,
     })
 
 

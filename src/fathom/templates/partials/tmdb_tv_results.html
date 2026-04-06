@@ -2,7 +2,7 @@
 <div style="max-height: 300px; overflow-y: auto;">
     {% for s in results %}
     <div class="result-row" style="cursor:pointer;"
-         onclick="selectSeries({{ s.tvdb_id or 0 }}, {{ s.tmdb_id }}, '{{ s.title | e }}', {{ s.year }}, '{{ (s.overview or '') | e }}', '{{ s.poster_url or '' }}')">
+         onclick='selectSeries({{ s.tvdb_id or 0 }}, {{ s.tmdb_id }}, {{ s.title | tojson }}, {{ s.year }}, {{ (s.overview or "") | tojson }}, {{ (s.poster_url or "") | tojson }})'>
         <div style="width:40px;height:60px;background:#111;border-radius:4px;overflow:hidden;flex-shrink:0;">
             {% if s.poster_url %}
             <img src="{{ s.poster_url }}" style="width:100%;height:100%;object-fit:cover;">
@@ -16,5 +16,9 @@
     {% endfor %}
 </div>
 {% elif query %}
-<div class="text-muted text-sm" style="padding: 12px;">No results for "{{ query }}"</div>
+<div style="padding: 20px; text-align: center;">
+    <div style="font-size: 24px; margin-bottom: 8px;">&#128269;</div>
+    <div style="color: var(--text-muted);">No series found for "<strong style="color: var(--text);">{{ query }}</strong>"</div>
+    <div class="text-sm text-dim" style="margin-top: 4px;">Check the spelling or try a different search term</div>
+</div>
 {% endif %}

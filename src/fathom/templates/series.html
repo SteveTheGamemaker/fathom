@@ -61,9 +61,11 @@
                            hx-trigger="keyup changed delay:500ms"
                            hx-target="#series-search-results"
                            hx-include="this"
+                           hx-indicator="#series-search-spinner"
                            name="q">
                 </div>
             </div>
+            <div id="series-search-spinner" class="htmx-indicator" style="padding: 12px; text-align: center; color: var(--text-muted);">Searching TMDB...</div>
             <div id="series-search-results"></div>
 
             <form id="add-series-form" style="display:none;"

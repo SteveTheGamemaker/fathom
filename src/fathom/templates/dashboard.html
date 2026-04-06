@@ -46,11 +46,17 @@
                 </thead>
                 <tbody>
                     {% for record in history %}
+                    {% set p = progress.get(record.id, {}) %}
                     <tr>
                         <td class="truncate" style="max-width: 400px;">{{ record.release_title }}</td>
                         <td><span class="badge badge-accent">{{ record.quality }}</span></td>
                         <td>
-                            {% if record.status == 'imported' %}
+                            {% if record.status == 'downloading' and p %}
+                            <div class="progress-bar-wrap" style="min-width: 120px;">
+                                <div class="progress-bar" style="width: {{ p.progress }}%"></div>
+                                <span class="progress-text">{{ p.progress }}%</span>
+                            </div>
+                            {% elif record.status == 'imported' %}
                             <span class="badge badge-green">imported</span>
                             {% elif record.status == 'completed' %}
                             <span class="badge badge-green">completed</span>

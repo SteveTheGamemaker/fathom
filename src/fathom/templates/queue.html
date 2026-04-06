@@ -17,14 +17,30 @@
                     <tr>
                         <th>Release</th>
                         <th>Quality</th>
+                        <th>Progress</th>
+                        <th>Speed</th>
+                        <th>ETA</th>
                         <th>Status</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for item in queue %}
+                    {% set p = progress.get(item.id, {}) %}
                     <tr>
-                        <td class="truncate" style="max-width: 500px;">{{ item.release_title }}</td>
+                        <td class="truncate" style="max-width: 400px;">{{ item.release_title }}</td>
                         <td><span class="badge badge-accent">{{ item.quality }}</span></td>
+                        <td style="min-width: 140px;">
+                            {% if p %}
+                            <div class="progress-bar-wrap">
+                                <div class="progress-bar" style="width: {{ p.progress }}%"></div>
+                                <span class="progress-text">{{ p.progress }}%</span>
+                            </div>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-muted text-sm">{{ format_speed(p.speed) if p.get('speed') else '—' }}</td>
+                        <td class="text-muted text-sm">{{ format_eta(p.eta) if p.get('eta') else '—' }}</td>
                         <td>
                             {% if item.status == 'downloading' %}
                             <span class="badge badge-accent">downloading</span>

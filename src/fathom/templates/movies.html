@@ -75,9 +75,11 @@
                            hx-trigger="keyup changed delay:500ms"
                            hx-target="#movie-search-results"
                            hx-include="this"
+                           hx-indicator="#movie-search-spinner"
                            name="q">
                 </div>
             </div>
+            <div id="movie-search-spinner" class="htmx-indicator" style="padding: 12px; text-align: center; color: var(--text-muted);">Searching TMDB...</div>
             <div id="movie-search-results"></div>
 
             <form id="add-movie-form" style="display:none;"
