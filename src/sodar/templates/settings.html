@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+{% block title %}sodar — Settings{% endblock %}
+{% block page_title %}Settings{% endblock %}
+
+{% block content %}
+<!-- Indexers -->
+<div class="card mb-6">
+    <div class="card-header">
+        <h2>Indexers</h2>
+        <button class="btn btn-sm btn-primary" onclick="document.getElementById('add-indexer-modal').style.display='flex'">+ Add</button>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        {% if indexers %}
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>URL</th>
+                        <th>Priority</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for idx in indexers %}
+                    <tr>
+                        <td>{{ idx.name }}</td>
+                        <td class="text-muted text-sm truncate" style="max-width:250px;">{{ idx.base_url }}</td>
+                        <td>{{ idx.priority }}</td>
+                        <td>
+                            {% if idx.enabled %}
+                            <span class="badge badge-green">enabled</span>
+                            {% else %}
+                            <span class="badge">disabled</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align:right;">
+                            <button class="btn btn-sm"
+                                    hx-post="/api/v1/indexer/{{ idx.id }}/test"
+                                    hx-swap="innerHTML"
+                                    hx-target="this">Test</button>
+                            <button class="btn btn-sm btn-danger btn-icon"
+                                    hx-delete="/api/v1/indexer/{{ idx.id }}"
+                                    hx-confirm="Delete {{ idx.name }}?"
+                                    hx-target="closest tr"
+                                    hx-swap="outerHTML">&#10005;</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state"><p>No indexers configured</p></div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Download Clients -->
+<div class="card mb-6">
+    <div class="card-header">
+        <h2>Download Clients</h2>
+        <button class="btn btn-sm btn-primary" onclick="document.getElementById('add-dlclient-modal').style.display='flex'">+ Add</button>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        {% if download_clients %}
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Host</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for dc in download_clients %}
+                    <tr>
+                        <td>{{ dc.name }}</td>
+                        <td><span class="badge">{{ dc.type }}</span></td>
+                        <td class="text-muted text-sm">{{ dc.host }}:{{ dc.port }}</td>
+                        <td>
+                            {% if dc.enabled %}
+                            <span class="badge badge-green">enabled</span>
+                            {% else %}
+                            <span class="badge">disabled</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align:right;">
+                            <button class="btn btn-sm"
+                                    hx-post="/api/v1/download-client/{{ dc.id }}/test"
+                                    hx-swap="innerHTML"
+                                    hx-target="this">Test</button>
+                            <button class="btn btn-sm btn-danger btn-icon"
+                                    hx-delete="/api/v1/download-client/{{ dc.id }}"
+                                    hx-confirm="Delete {{ dc.name }}?"
+                                    hx-target="closest tr"
+                                    hx-swap="outerHTML">&#10005;</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state"><p>No download clients configured</p></div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Quality Profiles (read-only for now) -->
+<div class="card">
+    <div class="card-header">
+        <h2>Quality Profiles</h2>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Cutoff</th>
+                        <th>Qualities</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in profiles %}
+                    <tr>
+                        <td><strong style="color:#fff;">{{ p.name }}</strong></td>
+                        <td><span class="badge badge-accent">{{ p.cutoff }}</span></td>
+                        <td class="text-muted text-sm">{{ p.items|length }} items</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Add Indexer Modal -->
+<div class="modal-overlay" id="add-indexer-modal" style="display:none;" onclick="if(event.target===this)this.style.display='none'">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Add Indexer</h3>
+            <button class="btn btn-icon btn-sm" onclick="document.getElementById('add-indexer-modal').style.display='none'">&#10005;</button>
+        </div>
+        <form hx-post="/web/add-indexer" hx-target="#main-content" hx-swap="innerHTML">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Name</label>
+                    <input type="text" name="name" required placeholder="e.g. YTS">
+                </div>
+                <div class="form-group">
+                    <label>Torznab URL</label>
+                    <input type="url" name="base_url" required placeholder="http://jackett:9117/api/v2.0/indexers/yts/results/torznab/">
+                </div>
+                <div class="form-group">
+                    <label>API Key</label>
+                    <input type="text" name="api_key" required>
+                </div>
+                <div class="form-group">
+                    <label>Categories (comma-separated)</label>
+                    <input type="text" name="categories" placeholder="2000,5000">
+                </div>
+                <div class="form-group">
+                    <label>Priority (lower = higher priority)</label>
+                    <input type="number" name="priority" value="1">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn" onclick="document.getElementById('add-indexer-modal').style.display='none'">Cancel</button>
+                <button type="submit" class="btn btn-primary">Add Indexer</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Download Client Modal -->
+<div class="modal-overlay" id="add-dlclient-modal" style="display:none;" onclick="if(event.target===this)this.style.display='none'">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Add Download Client</h3>
+            <button class="btn btn-icon btn-sm" onclick="document.getElementById('add-dlclient-modal').style.display='none'">&#10005;</button>
+        </div>
+        <form hx-post="/web/add-download-client" hx-target="#main-content" hx-swap="innerHTML">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Name</label>
+                    <input type="text" name="name" required placeholder="e.g. qBittorrent">
+                </div>
+                <div class="form-group">
+                    <label>Type</label>
+                    <select name="type">
+                        <option value="qbittorrent">qBittorrent</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Host</label>
+                    <input type="text" name="host" required placeholder="192.168.0.55">
+                </div>
+                <div class="form-group">
+                    <label>Port</label>
+                    <input type="number" name="port" value="8080" required>
+                </div>
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" name="username" placeholder="admin">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" name="password">
+                </div>
+                <div class="form-group">
+                    <label>Category (optional)</label>
+                    <input type="text" name="category" placeholder="sodar">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn" onclick="document.getElementById('add-dlclient-modal').style.display='none'">Cancel</button>
+                <button type="submit" class="btn btn-primary">Add Client</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}sodar{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+</head>
+<body>
+    <div class="shell">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-brand">
+                <img src="/static/img/logo.svg" alt="sodar">
+                <span>sodar</span>
+            </div>
+            <div class="sidebar-nav">
+                <div class="nav-section">Library</div>
+                <a href="/" class="{% if active_page == 'dashboard' %}active{% endif %}">
+                    <span class="icon">&#9632;</span> Dashboard
+                </a>
+                <a href="/movies" class="{% if active_page == 'movies' %}active{% endif %}">
+                    <span class="icon">&#9654;</span> Movies
+                </a>
+                <a href="/series" class="{% if active_page == 'series' %}active{% endif %}">
+                    <span class="icon">&#9776;</span> Series
+                </a>
+
+                <div class="nav-section">Activity</div>
+                <a href="/search" class="{% if active_page == 'search' %}active{% endif %}">
+                    <span class="icon">&#128269;</span> Search
+                </a>
+                <a href="/queue" class="{% if active_page == 'queue' %}active{% endif %}">
+                    <span class="icon">&#8595;</span> Queue
+                </a>
+
+                <div class="nav-section">System</div>
+                <a href="/settings" class="{% if active_page == 'settings' %}active{% endif %}">
+                    <span class="icon">&#9881;</span> Settings
+                </a>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <div class="main">
+            <header class="topbar">
+                <h1>{% block page_title %}Dashboard{% endblock %}</h1>
+                <div class="topbar-actions">
+                    {% block topbar_actions %}{% endblock %}
+                </div>
+            </header>
+
+            <div class="content" id="main-content">
+                {% block content %}{% endblock %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script>
+        // Toast helper
+        function showToast(msg, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast toast-' + type;
+            toast.textContent = msg;
+            container.appendChild(toast);
+            setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; }, 3000);
+            setTimeout(() => toast.remove(), 3500);
+        }
+
+        // Listen for HTMX events
+        document.body.addEventListener('htmx:afterRequest', function(evt) {
+            const xhr = evt.detail.xhr;
+            if (xhr && xhr.status >= 400) {
+                try {
+                    const data = JSON.parse(xhr.responseText);
+                    showToast(data.detail || 'An error occurred', 'error');
+                } catch(e) {
+                    showToast('Request failed', 'error');
+                }
+            }
+        });
+
+        // HTMX response header for toasts
+        document.body.addEventListener('htmx:afterSwap', function(evt) {
+            const msg = evt.detail.xhr?.getResponseHeader('X-Toast');
+            const type = evt.detail.xhr?.getResponseHeader('X-Toast-Type') || 'success';
+            if (msg) showToast(msg, type);
+        });
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

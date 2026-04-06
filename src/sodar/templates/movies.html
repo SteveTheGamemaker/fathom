@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}sodar — Movies{% endblock %}
+{% block page_title %}Movies{% endblock %}
+
+{% block topbar_actions %}
+<button class="btn btn-primary" onclick="document.getElementById('add-movie-modal').style.display='flex'">
+    + Add Movie
+</button>
+{% endblock %}
+
+{% block content %}
+{% if movies %}
+<div class="media-grid">
+    {% for movie in movies %}
+    <div class="media-card">
+        <div class="poster">
+            {% if movie.poster_url %}
+            <img src="{{ movie.poster_url }}" alt="{{ movie.title }}" loading="lazy">
+            {% else %}
+            &#127902;
+            {% endif %}
+        </div>
+        {% if movie.file_quality %}
+        <div class="media-quality">
+            <span class="badge badge-green">{{ movie.file_quality }}</span>
+        </div>
+        {% endif %}
+        {% if not movie.file_path %}
+        <div class="media-status">
+            <span class="badge badge-orange">wanted</span>
+        </div>
+        {% endif %}
+        <div class="media-info">
+            <div class="media-title" title="{{ movie.title }}">{{ movie.title }}</div>
+            <div class="flex items-center justify-between mt-2">
+                <span class="media-year">{{ movie.year }}</span>
+                <button class="btn btn-sm btn-danger btn-icon"
+                        hx-delete="/api/v1/movie/{{ movie.id }}"
+                        hx-confirm="Delete {{ movie.title }}?"
+                        hx-target="closest .media-card"
+                        hx-swap="outerHTML"
+                        title="Delete">&#10005;</button>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <div class="empty-icon">&#127902;</div>
+    <p>No movies in your library yet</p>
+    <button class="btn btn-primary" onclick="document.getElementById('add-movie-modal').style.display='flex'">
+        Add Your First Movie
+    </button>
+</div>
+{% endif %}
+
+<!-- Add Movie Modal -->
+<div class="modal-overlay" id="add-movie-modal" style="display:none;" onclick="if(event.target===this)this.style.display='none'">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Add Movie</h3>
+            <button class="btn btn-icon btn-sm" onclick="document.getElementById('add-movie-modal').style.display='none'">&#10005;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Search TMDB</label>
+                <div class="search-bar">
+                    <input type="text" id="movie-search-input" placeholder="Movie title..."
+                           hx-get="/web/search-tmdb-movie"
+                           hx-trigger="keyup changed delay:500ms"
+                           hx-target="#movie-search-results"
+                           hx-include="this"
+                           name="q">
+                </div>
+            </div>
+            <div id="movie-search-results"></div>
+
+            <form id="add-movie-form" style="display:none;"
+                  hx-post="/web/add-movie"
+                  hx-target="#main-content"
+                  hx-swap="innerHTML">
+                <input type="hidden" name="tmdb_id" id="movie-tmdb-id">
+                <input type="hidden" name="title" id="movie-title-input">
+                <input type="hidden" name="year" id="movie-year-input">
+                <input type="hidden" name="overview" id="movie-overview-input">
+                <input type="hidden" name="poster_url" id="movie-poster-input">
+                <input type="hidden" name="imdb_id" id="movie-imdb-input">
+
+                <div id="movie-selected-info" class="mb-4"></div>
+
+                <div class="form-group">
+                    <label>Quality Profile</label>
+                    <select name="quality_profile_id">
+                        {% for p in profiles %}
+                        <option value="{{ p.id }}">{{ p.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Root Folder</label>
+                    <input type="text" name="root_folder" value="/movies">
+                </div>
+                <div class="modal-footer" style="padding: 12px 0 0;">
+                    <button type="button" class="btn" onclick="document.getElementById('add-movie-modal').style.display='none'">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Movie</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function selectMovie(tmdbId, title, year, overview, posterUrl, imdbId) {
+    document.getElementById('movie-tmdb-id').value = tmdbId;
+    document.getElementById('movie-title-input').value = title;
+    document.getElementById('movie-year-input').value = year;
+    document.getElementById('movie-overview-input').value = overview || '';
+    document.getElementById('movie-poster-input').value = posterUrl || '';
+    document.getElementById('movie-imdb-input').value = imdbId || '';
+    document.getElementById('movie-selected-info').innerHTML =
+        '<div class="flex gap-2 items-center" style="padding: 10px; background: rgba(34,248,251,0.05); border: 1px solid var(--border); border-radius: var(--radius);">' +
+        (posterUrl ? '<img src="' + posterUrl + '" style="width:50px;border-radius:4px;">' : '') +
+        '<div><strong style="color:#fff;">' + title + '</strong> <span class="text-muted">(' + year + ')</span>' +
+        '<div class="text-sm text-dim" style="margin-top:4px;max-height:40px;overflow:hidden;">' + (overview || '') + '</div></div></div>';
+    document.getElementById('add-movie-form').style.display = 'block';
+    document.getElementById('movie-search-results').innerHTML = '';
+}
+</script>
+{% endblock %}

@@ -42,6 +42,10 @@ class SchedulerConfig(BaseModel):
     import_check_interval_seconds: int = 60
 
 
+class TMDBConfig(BaseModel):
+    api_key: str = ""
+
+
 class AuthConfig(BaseModel):
     api_key: str = ""
 
@@ -54,6 +58,7 @@ class Settings(BaseSettings):
     llm: LLMConfig = Field(default_factory=LLMConfig)
     media: MediaConfig = Field(default_factory=MediaConfig)
     scheduler: SchedulerConfig = Field(default_factory=SchedulerConfig)
+    tmdb: TMDBConfig = Field(default_factory=TMDBConfig)
     auth: AuthConfig = Field(default_factory=AuthConfig)
 
 

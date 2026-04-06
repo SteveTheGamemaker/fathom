@@ -1,0 +1,45 @@
+{% if results %}
+<div class="card">
+    <div class="card-header">
+        <h2>{{ total }} Results for "{{ query }}"</h2>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        {% for r in results %}
+        <div class="result-row">
+            <div class="result-title">
+                <div class="name" title="{{ r.title }}">{{ r.title }}</div>
+                <div class="meta">
+                    {% if r.parsed_title %}{{ r.parsed_title }}{% endif %}
+                    {% if r.year %} ({{ r.year }}){% endif %}
+                    {% if r.season is not none %} S{{ '%02d'|format(r.season) }}{% endif %}{% if r.episode is not none %}E{{ '%02d'|format(r.episode) }}{% endif %}
+                    &middot; {{ r.indexer_name }}
+                    {% if r.parse_method %} &middot; <span class="text-dim">{{ r.parse_method }}</span>{% endif %}
+                </div>
+            </div>
+            <div class="result-stats">
+                <span title="Quality"><span class="badge badge-accent">{{ r.quality or 'unknown' }}</span></span>
+                {% if r.codec %}<span class="text-dim">{{ r.codec }}</span>{% endif %}
+                <span title="Size">{{ "%.1f"|format(r.size / 1073741824) if r.size else '?' }} GB</span>
+                <span title="Seeders" class="{% if r.seeders and r.seeders > 0 %}text-green{% else %}text-red{% endif %}">
+                    &#9650; {{ r.seeders if r.seeders is not none else '?' }}
+                </span>
+            </div>
+            <div>
+                <button class="btn btn-sm btn-primary"
+                        hx-post="/web/grab"
+                        hx-vals='{"download_url": "{{ r.download_url | e }}", "release_title": "{{ r.title | e }}", "quality": "{{ r.quality or 'unknown' }}"}'
+                        hx-swap="outerHTML"
+                        hx-target="this">
+                    Grab
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% else %}
+<div class="empty-state">
+    <div class="empty-icon">&#128269;</div>
+    <p>No results found for "{{ query }}"</p>
+</div>
+{% endif %}

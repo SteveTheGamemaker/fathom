@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from collections.abc import AsyncGenerator
+from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from sqlalchemy import select
 
@@ -11,6 +13,8 @@ import sodar.database as db
 from sodar.api.router import api_router
 from sodar.models import Base  # imports all models, registering them with metadata
 from sodar.models.quality import DEFAULT_PROFILES, QualityProfile, QualityProfileItem
+
+STATIC_DIR = Path(__file__).parent / "static"
 
 
 async def _seed_quality_profiles():
@@ -56,4 +60,10 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     app.include_router(api_router)
+
+    # Web UI
+    from sodar.web.routes import router as web_router
+    app.include_router(web_router)
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
     return app

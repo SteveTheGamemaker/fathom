@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}sodar — Search{% endblock %}
+{% block page_title %}Search Indexers{% endblock %}
+
+{% block content %}
+<div class="card mb-6">
+    <div class="card-body">
+        <form hx-post="/web/search" hx-target="#search-results" hx-indicator="#search-spinner">
+            <div class="search-bar">
+                <input type="text" name="query" placeholder="Search for releases..." autofocus
+                       value="{{ query or '' }}">
+                <button type="submit" class="btn btn-primary">
+                    Search
+                    <span class="htmx-indicator" id="search-spinner"><span class="spinner"></span></span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="search-results">
+    {% if results is defined %}
+    {% include "partials/search_results.html" %}
+    {% endif %}
+</div>
+{% endblock %}
