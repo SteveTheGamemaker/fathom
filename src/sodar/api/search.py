@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from sodar.database import get_db_session
 from sodar.indexers.torznab import TorznabClient
+from sodar.indexers.newznab import NewznabClient
 from sodar.llm.parser import parse_releases
 from sodar.models.indexer import Indexer
 from sodar.schemas.search import SearchRequest, SearchResponse, SearchResultItem
@@ -34,12 +35,16 @@ async def search(
 
     # Search all indexers in parallel
     async def _search_one(indexer: Indexer):
-        client = TorznabClient(
-            name=indexer.name,
-            base_url=indexer.base_url,
-            api_key=indexer.api_key,
-            categories=indexer.categories,
-        )
+        if indexer.type == "newznab":
+            client = NewznabClient(
+                name=indexer.name, base_url=indexer.base_url,
+                api_key=indexer.api_key, categories=indexer.categories,
+            )
+        else:
+            client = TorznabClient(
+                name=indexer.name, base_url=indexer.base_url,
+                api_key=indexer.api_key, categories=indexer.categories,
+            )
         try:
             return await client.search(data.query, data.categories)
         finally:

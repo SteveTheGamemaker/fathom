@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sodar.database import get_db_session
-from sodar.downloaders.qbittorrent import QBittorrentClient
+from sodar.downloaders import make_downloader
 from sodar.models.download import DownloadClient, DownloadRecord
 from sodar.schemas.download import (
     DownloadClientCreate,
@@ -24,15 +24,10 @@ router = APIRouter(tags=["downloads"])
 
 
 def _make_downloader(client: DownloadClient):
-    if client.type == "qbittorrent":
-        return QBittorrentClient(
-            host=client.host,
-            port=client.port,
-            username=client.username,
-            password=client.password,
-            use_ssl=client.use_ssl,
-        )
-    raise HTTPException(400, f"Unsupported download client type: {client.type}")
+    downloader = make_downloader(client)
+    if not downloader:
+        raise HTTPException(400, f"Unsupported download client type: {client.type}")
+    return downloader
 
 
 # --- Download Client CRUD ---
@@ -123,7 +118,10 @@ async def grab_release(
 
     downloader = _make_downloader(dl_client)
     try:
-        download_id = await downloader.add_torrent(data.download_url, category=dl_client.category)
+        if dl_client.type == "sabnzbd":
+            download_id = await downloader.add_nzb(data.download_url, category=dl_client.category)
+        else:
+            download_id = await downloader.add_torrent(data.download_url, category=dl_client.category)
     finally:
         if hasattr(downloader, "close"):
             await downloader.close()

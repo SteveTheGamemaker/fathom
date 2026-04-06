@@ -1,0 +1,12 @@
+services:
+  sodar:
+    build: .
+    container_name: sodar
+    restart: unless-stopped
+    ports:
+      - "8989:8989"
+    volumes:
+      - ./data:/app/data
+      - ./config.yaml:/app/config.yaml:ro
+    environment:
+      - SODAR_DATABASE__PATH=/app/data/sodar.db

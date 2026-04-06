@@ -42,6 +42,11 @@ async def import_completed_download(
             movie.file_quality = record.quality
             movie.downloaded_at = now
             log.info("Imported movie: %s → %s (%s)", movie.title, save_path, record.quality)
+            try:
+                from sodar.services.notification_service import notify_import
+                await notify_import(movie.title, record.quality, save_path)
+            except Exception:
+                pass
         else:
             log.warning("Import: movie_id %d not found", record.movie_id)
             return False
@@ -52,6 +57,11 @@ async def import_completed_download(
             episode.file_path = save_path
             episode.file_quality = record.quality
             log.info("Imported episode id %d → %s (%s)", episode.id, save_path, record.quality)
+            try:
+                from sodar.services.notification_service import notify_import
+                await notify_import(f"Episode {episode.id}", record.quality, save_path)
+            except Exception:
+                pass
         else:
             log.warning("Import: episode_id %d not found", record.episode_id)
             return False

@@ -9,8 +9,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 import sodar.database as db
-from sodar.downloaders.qbittorrent import QBittorrentClient
+from sodar.downloaders import make_downloader
 from sodar.indexers.torznab import TorznabClient
+from sodar.indexers.newznab import NewznabClient
 from sodar.llm.matcher import rank_releases
 from sodar.llm.parser import parse_releases
 from sodar.models.download import DownloadClient, DownloadRecord
@@ -21,16 +22,16 @@ from sodar.models.quality import QualityProfile
 log = logging.getLogger(__name__)
 
 
-def _make_downloader(client: DownloadClient):
-    if client.type == "qbittorrent":
-        return QBittorrentClient(
-            host=client.host,
-            port=client.port,
-            username=client.username,
-            password=client.password,
-            use_ssl=client.use_ssl,
+def _make_indexer_client(indexer: Indexer):
+    if indexer.type == "newznab":
+        return NewznabClient(
+            name=indexer.name, base_url=indexer.base_url,
+            api_key=indexer.api_key, categories=indexer.categories,
         )
-    return None
+    return TorznabClient(
+        name=indexer.name, base_url=indexer.base_url,
+        api_key=indexer.api_key, categories=indexer.categories,
+    )
 
 
 async def _get_enabled_download_client(session) -> DownloadClient | None:
@@ -41,12 +42,7 @@ async def _get_enabled_download_client(session) -> DownloadClient | None:
 
 
 async def _search_indexer(indexer: Indexer, query: str) -> list:
-    client = TorznabClient(
-        name=indexer.name,
-        base_url=indexer.base_url,
-        api_key=indexer.api_key,
-        categories=indexer.categories,
-    )
+    client = _make_indexer_client(indexer)
     try:
         return await client.search(query)
     except Exception:
@@ -101,12 +97,15 @@ async def _grab_best(
     if existing.scalars().first():
         return False
 
-    downloader = _make_downloader(dl_client)
+    downloader = make_downloader(dl_client)
     if not downloader:
         return False
 
     try:
-        download_id = await downloader.add_torrent(download_url, category=dl_client.category)
+        if dl_client.type == "sabnzbd":
+            download_id = await downloader.add_nzb(download_url, category=dl_client.category)
+        else:
+            download_id = await downloader.add_torrent(download_url, category=dl_client.category)
     except Exception:
         log.exception("RSS sync: failed to send torrent to download client")
         return False
@@ -126,6 +125,13 @@ async def _grab_best(
     )
     session.add(record)
     log.info("RSS sync: grabbed %s (%s)", best.raw_title, best.quality)
+
+    try:
+        from sodar.services.notification_service import notify_grab
+        await notify_grab(best.raw_title, best.quality)
+    except Exception:
+        pass
+
     return True
 
 

@@ -12,23 +12,11 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 
 import sodar.database as db
-from sodar.downloaders.qbittorrent import QBittorrentClient
+from sodar.downloaders import make_downloader
 from sodar.models.download import DownloadClient, DownloadRecord
 from sodar.services.import_service import import_completed_download
 
 log = logging.getLogger(__name__)
-
-
-def _make_downloader(client: DownloadClient):
-    if client.type == "qbittorrent":
-        return QBittorrentClient(
-            host=client.host,
-            port=client.port,
-            username=client.username,
-            password=client.password,
-            use_ssl=client.use_ssl,
-        )
-    return None
 
 
 async def import_check_job() -> None:
@@ -56,7 +44,7 @@ async def import_check_job() -> None:
                 log.warning("Import check: download client %d not found", client_id)
                 continue
 
-            downloader = _make_downloader(dl_client)
+            downloader = make_downloader(dl_client)
             if not downloader:
                 log.warning("Import check: unsupported client type %s", dl_client.type)
                 continue

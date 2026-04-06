@@ -17,6 +17,7 @@ from sqlalchemy.orm import selectinload
 from sodar.config import settings
 from sodar.database import get_db_session
 from sodar.indexers.torznab import TorznabClient
+from sodar.indexers.newznab import NewznabClient
 from sodar.llm.parser import parse_releases
 from sodar.models.download import DownloadClient, DownloadRecord
 from sodar.models.indexer import Indexer
@@ -184,10 +185,16 @@ async def web_search(request: Request, session: AsyncSession = Depends(get_db_se
     indexers = result.scalars().all()
 
     async def _search_one(indexer: Indexer):
-        client = TorznabClient(
-            name=indexer.name, base_url=indexer.base_url,
-            api_key=indexer.api_key, categories=indexer.categories,
-        )
+        if indexer.type == "newznab":
+            client = NewznabClient(
+                name=indexer.name, base_url=indexer.base_url,
+                api_key=indexer.api_key, categories=indexer.categories,
+            )
+        else:
+            client = TorznabClient(
+                name=indexer.name, base_url=indexer.base_url,
+                api_key=indexer.api_key, categories=indexer.categories,
+            )
         try:
             return await client.search(query)
         finally:
@@ -361,7 +368,7 @@ async def web_add_indexer(request: Request, session: AsyncSession = Depends(get_
     form = await request.form()
     indexer = Indexer(
         name=form.get("name", ""),
-        type="torznab",
+        type=form.get("type", "torznab"),
         base_url=form.get("base_url", ""),
         api_key=form.get("api_key", ""),
         categories=form.get("categories", ""),

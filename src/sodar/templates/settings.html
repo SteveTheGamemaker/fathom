@@ -154,7 +154,14 @@
                     <input type="text" name="name" required placeholder="e.g. YTS">
                 </div>
                 <div class="form-group">
-                    <label>Torznab URL</label>
+                    <label>Type</label>
+                    <select name="type">
+                        <option value="torznab">Torznab</option>
+                        <option value="newznab">Newznab</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>URL</label>
                     <input type="url" name="base_url" required placeholder="http://jackett:9117/api/v2.0/indexers/yts/results/torznab/">
                 </div>
                 <div class="form-group">
@@ -195,6 +202,8 @@
                     <label>Type</label>
                     <select name="type">
                         <option value="qbittorrent">qBittorrent</option>
+                        <option value="transmission">Transmission</option>
+                        <option value="sabnzbd">SABnzbd</option>
                     </select>
                 </div>
                 <div class="form-group">

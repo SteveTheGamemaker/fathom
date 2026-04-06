@@ -46,6 +46,12 @@ class TMDBConfig(BaseModel):
     api_key: str = ""
 
 
+class NotificationConfig(BaseModel):
+    webhook_url: str = ""  # Discord/Slack-compatible webhook
+    on_grab: bool = True
+    on_import: bool = True
+
+
 class AuthConfig(BaseModel):
     api_key: str = ""
 
@@ -59,6 +65,7 @@ class Settings(BaseSettings):
     media: MediaConfig = Field(default_factory=MediaConfig)
     scheduler: SchedulerConfig = Field(default_factory=SchedulerConfig)
     tmdb: TMDBConfig = Field(default_factory=TMDBConfig)
+    notifications: NotificationConfig = Field(default_factory=NotificationConfig)
     auth: AuthConfig = Field(default_factory=AuthConfig)
 
 
