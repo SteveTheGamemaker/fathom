@@ -126,6 +126,13 @@ async def _grab_best(
     session.add(record)
     log.info("RSS sync: grabbed %s (%s)", best.raw_title, best.quality)
 
+    from fathom.services.activity_service import log_activity
+    await log_activity(
+        session, "grabbed", f"Grabbed {best.raw_title}",
+        detail=best.quality, media_type=media_type,
+        movie_id=movie_id, episode_id=episode_id,
+    )
+
     try:
         from fathom.services.notification_service import notify_grab
         await notify_grab(best.raw_title, best.quality)

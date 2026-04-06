@@ -33,44 +33,38 @@
         <h2>Recent Activity</h2>
     </div>
     <div class="card-body">
-        {% if history %}
+        {% if activity %}
         <div class="table-wrap">
             <table>
                 <thead>
                     <tr>
-                        <th>Release</th>
-                        <th>Quality</th>
-                        <th>Status</th>
-                        <th>Added</th>
+                        <th>Event</th>
+                        <th>Description</th>
+                        <th>Detail</th>
+                        <th>Time</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for record in history %}
-                    {% set p = progress.get(record.id, {}) %}
+                    {% for entry in activity %}
                     <tr>
-                        <td class="truncate" style="max-width: 400px;">{{ record.release_title }}</td>
-                        <td><span class="badge badge-accent">{{ record.quality }}</span></td>
                         <td>
-                            {% if record.status == 'downloading' and p %}
-                            <div class="progress-bar-wrap" style="min-width: 120px;">
-                                <div class="progress-bar" style="width: {{ p.progress }}%"></div>
-                                <span class="progress-text">{{ p.progress }}%</span>
-                            </div>
-                            {% elif record.status == 'imported' %}
+                            {% if entry.event_type == 'grabbed' %}
+                            <span class="badge badge-accent">grabbed</span>
+                            {% elif entry.event_type == 'imported' %}
                             <span class="badge badge-green">imported</span>
-                            {% elif record.status == 'completed' %}
-                            <span class="badge badge-green">completed</span>
-                            {% elif record.status == 'downloading' %}
-                            <span class="badge badge-accent">downloading</span>
-                            {% elif record.status == 'queued' %}
-                            <span class="badge badge-yellow">queued</span>
-                            {% elif record.status == 'failed' %}
+                            {% elif entry.event_type == 'added' %}
+                            <span class="badge badge-yellow">added</span>
+                            {% elif entry.event_type == 'failed' %}
                             <span class="badge badge-red">failed</span>
+                            {% elif entry.event_type == 'completed' %}
+                            <span class="badge badge-green">completed</span>
                             {% else %}
-                            <span class="badge">{{ record.status }}</span>
+                            <span class="badge">{{ entry.event_type }}</span>
                             {% endif %}
                         </td>
-                        <td class="text-muted text-sm">{{ record.added_at.strftime('%Y-%m-%d %H:%M') if record.added_at else '—' }}</td>
+                        <td class="truncate" style="max-width: 400px;">{{ entry.message }}</td>
+                        <td class="text-muted text-sm">{{ entry.detail or '—' }}</td>
+                        <td class="text-muted text-sm">{{ entry.timestamp.strftime('%Y-%m-%d %H:%M') if entry.timestamp else '—' }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -79,7 +73,7 @@
         {% else %}
         <div class="empty-state">
             <div class="empty-icon">&#8595;</div>
-            <p>No download activity yet</p>
+            <p>No activity yet</p>
         </div>
         {% endif %}
     </div>

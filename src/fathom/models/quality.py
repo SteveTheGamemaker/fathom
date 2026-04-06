@@ -81,6 +81,16 @@ DEFAULT_PROFILES = [
         ],
     },
     {
+        "name": "HD-720p",
+        "cutoff": "bluray-720p",
+        "items": [
+            {"quality_name": "hdtv-720p", "allowed": True, "sort_order": 1},
+            {"quality_name": "webdl-720p", "allowed": True, "sort_order": 2},
+            {"quality_name": "webrip-720p", "allowed": True, "sort_order": 3},
+            {"quality_name": "bluray-720p", "allowed": True, "sort_order": 4},
+        ],
+    },
+    {
         "name": "HD-1080p",
         "cutoff": "bluray-1080p",
         "items": [

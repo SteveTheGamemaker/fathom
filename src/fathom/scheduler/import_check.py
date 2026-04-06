@@ -77,6 +77,13 @@ async def import_check_job() -> None:
                         record.status = "failed"
                         log.warning("Download failed: %s", record.release_title)
 
+                        from fathom.services.activity_service import log_activity
+                        await log_activity(
+                            session, "failed", f"Download failed: {record.release_title}",
+                            media_type=record.media_type,
+                            movie_id=record.movie_id, episode_id=record.episode_id,
+                        )
+
                     elif status.status == "downloading":
                         if record.status != "downloading":
                             record.status = "downloading"

@@ -127,6 +127,12 @@ async def import_completed_download(
         movie.downloaded_at = now
         log.info("Imported movie: %s (%s)", movie.title, record.quality)
 
+        from fathom.services.activity_service import log_activity
+        await log_activity(
+            session, "imported", f"Imported {movie.title} ({movie.year})",
+            detail=record.quality, media_type="movie", movie_id=movie.id,
+        )
+
         try:
             from fathom.services.notification_service import notify_import
             await notify_import(movie.title, record.quality, movie.file_path)
@@ -155,6 +161,12 @@ async def import_completed_download(
         episode.file_quality = record.quality
         title = f"{series.title} S{season.season_number:02d}E{episode.episode_number:02d}" if series and season else f"Episode {episode.id}"
         log.info("Imported episode: %s (%s)", title, record.quality)
+
+        from fathom.services.activity_service import log_activity
+        await log_activity(
+            session, "imported", f"Imported {title}",
+            detail=record.quality, media_type="episode", episode_id=episode.id,
+        )
 
         try:
             from fathom.services.notification_service import notify_import

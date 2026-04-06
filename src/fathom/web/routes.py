@@ -19,6 +19,7 @@ from fathom.database import get_db_session
 from fathom.indexers.torznab import TorznabClient
 from fathom.indexers.newznab import NewznabClient
 from fathom.llm.parser import parse_releases
+from fathom.models.activity import ActivityLog
 from fathom.models.download import DownloadClient, DownloadRecord
 from fathom.models.indexer import Indexer
 from fathom.models.media import Episode, MediaStatus, Movie, Season, Series
@@ -30,8 +31,6 @@ TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 router = APIRouter()
-
-# Register template globals after helpers are defined (below)
 
 
 async def _fetch_download_progress(session, records: list) -> dict:
@@ -93,6 +92,12 @@ def _format_eta(seconds: int | None) -> str:
     return f"{seconds}s"
 
 
+# Register helpers as Jinja2 globals so they don't pollute the context dict
+# (unhashable context values break Jinja's template cache in Starlette 1.0)
+templates.env.globals["format_speed"] = _format_speed
+templates.env.globals["format_eta"] = _format_eta
+
+
 # ─── Page Routes ────────────────────────────────────────────────
 
 @router.get("/", response_class=HTMLResponse)
@@ -116,14 +121,10 @@ async def dashboard(request: Request, session: AsyncSession = Depends(get_db_ses
         select(func.count(Indexer.id)).where(Indexer.enabled == True)
     )).scalar() or 0
 
-    history_result = await session.execute(
-        select(DownloadRecord).order_by(DownloadRecord.added_at.desc()).limit(10)
+    activity_result = await session.execute(
+        select(ActivityLog).order_by(ActivityLog.timestamp.desc()).limit(15)
     )
-    history = history_result.scalars().all()
-
-    # Fetch live progress for active items in history
-    active_in_history = [r for r in history if r.status in ("queued", "downloading")]
-    progress_map = await _fetch_download_progress(session, active_in_history)
+    activity = activity_result.scalars().all()
 
     # Scheduler info
     scheduler_jobs = []
@@ -138,8 +139,7 @@ async def dashboard(request: Request, session: AsyncSession = Depends(get_db_ses
     except Exception:
         pass
 
-    return templates.TemplateResponse("dashboard.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "dashboard.html", {
         "active_page": "dashboard",
         "movie_count": movie_count,
         "movies_wanted": movies_wanted,
@@ -148,10 +148,7 @@ async def dashboard(request: Request, session: AsyncSession = Depends(get_db_ses
         "queue_count": queue_count,
         "indexer_count": indexer_count,
         "indexers_enabled": indexers_enabled,
-        "history": history,
-        "progress": progress_map,
-        "format_speed": _format_speed,
-        "format_eta": _format_eta,
+        "activity": activity,
         "scheduler_jobs": scheduler_jobs,
     })
 
@@ -174,8 +171,7 @@ async def movies_page(request: Request, session: AsyncSession = Depends(get_db_s
     profiles_result = await session.execute(select(QualityProfile))
     profiles = profiles_result.scalars().all()
 
-    return templates.TemplateResponse("movies.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "movies.html", {
         "active_page": "movies",
         "movies": movies,
         "profiles": profiles,
@@ -196,8 +192,7 @@ async def series_page(request: Request, session: AsyncSession = Depends(get_db_s
     profiles_result = await session.execute(select(QualityProfile))
     profiles = profiles_result.scalars().all()
 
-    return templates.TemplateResponse("series.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "series.html", {
         "active_page": "series",
         "series_list": series_list,
         "profiles": profiles,
@@ -207,8 +202,7 @@ async def series_page(request: Request, session: AsyncSession = Depends(get_db_s
 
 @router.get("/search", response_class=HTMLResponse)
 async def search_page(request: Request):
-    return templates.TemplateResponse("search.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "search.html", {
         "active_page": "search",
     })
 
@@ -230,14 +224,11 @@ async def queue_page(request: Request, session: AsyncSession = Depends(get_db_se
     )
     history = history_result.scalars().all()
 
-    return templates.TemplateResponse("queue.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "queue.html", {
         "active_page": "queue",
         "queue": queue,
         "history": history,
         "progress": progress_map,
-        "format_speed": _format_speed,
-        "format_eta": _format_eta,
     })
 
 
@@ -249,8 +240,7 @@ async def settings_page(request: Request, session: AsyncSession = Depends(get_db
         select(QualityProfile).options(selectinload(QualityProfile.items))
     )).scalars().all()
 
-    return templates.TemplateResponse("settings.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "settings.html", {
         "active_page": "settings",
         "indexers": indexers,
         "download_clients": download_clients,
@@ -299,8 +289,8 @@ async def web_search(request: Request, session: AsyncSession = Depends(get_db_se
         all_results.extend(r)
 
     if not all_results:
-        return templates.TemplateResponse("partials/search_results.html", {
-            "request": request, "results": [], "query": query, "total": 0,
+        return templates.TemplateResponse(request, "partials/search_results.html", {
+            "results": [], "query": query, "total": 0,
         })
 
     release_names = [r.title for r in all_results]
@@ -328,8 +318,8 @@ async def web_search(request: Request, session: AsyncSession = Depends(get_db_se
 
     results.sort(key=lambda x: (x["seeders"] or 0), reverse=True)
 
-    return templates.TemplateResponse("partials/search_results.html", {
-        "request": request, "results": results, "query": query, "total": len(results),
+    return templates.TemplateResponse(request, "partials/search_results.html", {
+        "results": results, "query": query, "total": len(results),
     })
 
 
@@ -370,6 +360,13 @@ async def web_grab(request: Request, session: AsyncSession = Depends(get_db_sess
         status="queued",
     )
     session.add(record)
+
+    from fathom.services.activity_service import log_activity
+    await log_activity(
+        session, "grabbed", f"Grabbed {release_title}",
+        detail=quality, media_type="movie",
+    )
+
     await session.commit()
 
     return HTMLResponse('<span class="badge badge-green">Grabbed!</span>')
@@ -414,6 +411,13 @@ async def web_add_movie(request: Request, session: AsyncSession = Depends(get_db
         folder_name=_default_folder(title, year),
     )
     session.add(movie)
+
+    from fathom.services.activity_service import log_activity
+    await log_activity(
+        session, "added", f"Added {title} ({year})",
+        media_type="movie",
+    )
+
     await session.commit()
 
     # Re-render movies page content
@@ -486,6 +490,12 @@ async def web_add_series(request: Request, session: AsyncSession = Depends(get_d
         finally:
             await tmdb.close()
 
+    from fathom.services.activity_service import log_activity
+    await log_activity(
+        session, "added", f"Added {title} ({year})",
+        media_type="series",
+    )
+
     await session.commit()
 
     return RedirectResponse("/series", status_code=303)
@@ -551,8 +561,8 @@ async def search_tmdb_movie(request: Request):
             except Exception:
                 m["id"] = m["tmdb_id"]
             enriched.append(m)
-        return templates.TemplateResponse("partials/tmdb_movie_results.html", {
-            "request": request, "results": enriched, "query": query,
+        return templates.TemplateResponse(request, "partials/tmdb_movie_results.html", {
+            "results": enriched, "query": query,
         })
     except Exception as e:
         log.exception("TMDB movie search failed")
@@ -583,8 +593,8 @@ async def search_tmdb_tv(request: Request):
             except Exception:
                 s["tvdb_id"] = 0
             enriched.append(s)
-        return templates.TemplateResponse("partials/tmdb_tv_results.html", {
-            "request": request, "results": enriched, "query": query,
+        return templates.TemplateResponse(request, "partials/tmdb_tv_results.html", {
+            "results": enriched, "query": query,
         })
     except Exception as e:
         log.exception("TMDB TV search failed")
