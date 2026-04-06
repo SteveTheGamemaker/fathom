@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="logo.svg" alt="Fathom logo" width="600">
+  <img src="logo.svg" alt="Fathom logo" width="400">
 </p>
 
 # Fathom
