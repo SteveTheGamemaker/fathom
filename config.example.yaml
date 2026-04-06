@@ -27,7 +27,7 @@ scheduler:
   import_check_interval_seconds: 60
 
 tmdb:
-  api_key: ""  # For movie/series metadata lookup
+  api_key: ""  # Override built-in TMDB key if desired
 
 notifications:
   webhook_url: ""  # Discord/Slack-compatible webhook

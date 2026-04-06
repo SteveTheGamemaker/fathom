@@ -43,7 +43,7 @@ class SchedulerConfig(BaseModel):
 
 
 class TMDBConfig(BaseModel):
-    api_key: str = ""
+    api_key: str = "57ce2633c1b992046ed3e7715b542fd1"
 
 
 class NotificationConfig(BaseModel):
