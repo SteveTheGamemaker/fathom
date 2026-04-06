@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from sodar.llm.matcher import rank_releases
+from fathom.llm.matcher import rank_releases
 
 
 @dataclass

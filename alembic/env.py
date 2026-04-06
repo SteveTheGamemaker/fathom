@@ -6,12 +6,12 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
 
-from sodar.models.base import Base
-import sodar.models.release  # noqa: F401 — register models for autogenerate
-import sodar.models.indexer  # noqa: F401
-import sodar.models.media  # noqa: F401
-import sodar.models.quality  # noqa: F401
-import sodar.models.download  # noqa: F401
+from fathom.models.base import Base
+import fathom.models.release  # noqa: F401 — register models for autogenerate
+import fathom.models.indexer  # noqa: F401
+import fathom.models.media  # noqa: F401
+import fathom.models.quality  # noqa: F401
+import fathom.models.download  # noqa: F401
 
 config = context.config
 

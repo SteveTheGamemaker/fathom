@@ -1,6 +1,6 @@
 """Tests for the regex fallback parser."""
 
-from sodar.llm.fallback import try_parse
+from fathom.llm.fallback import try_parse
 
 
 def test_movie_bluray_1080p():

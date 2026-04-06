@@ -28,11 +28,11 @@ async def test_download_client_crud(client):
     # Update
     resp = await client.put(f"/api/v1/download-client/{client_id}", json={
         "name": "Updated qBit",
-        "category": "sodar",
+        "category": "fathom",
     })
     assert resp.status_code == 200
     assert resp.json()["name"] == "Updated qBit"
-    assert resp.json()["category"] == "sodar"
+    assert resp.json()["category"] == "fathom"
 
     # Delete
     resp = await client.delete(f"/api/v1/download-client/{client_id}")

@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Fathom — Series{% endblock %}
+{% block page_title %}Series{% endblock %}
+
+{% block topbar_actions %}
+<button class="btn btn-primary" onclick="document.getElementById('add-series-modal').style.display='flex'">
+    + Add Series
+</button>
+{% endblock %}
+
+{% block content %}
+{% if series_list %}
+<div class="media-grid">
+    {% for s in series_list %}
+    <div class="media-card">
+        <div class="poster">
+            {% if s.poster_url %}
+            <img src="{{ s.poster_url }}" alt="{{ s.title }}" loading="lazy">
+            {% else %}
+            &#128250;
+            {% endif %}
+        </div>
+        <div class="media-info">
+            <div class="media-title" title="{{ s.title }}">{{ s.title }}</div>
+            <div class="flex items-center justify-between mt-2">
+                <span class="media-year">{{ s.year }}</span>
+                <button class="btn btn-sm btn-danger btn-icon"
+                        hx-delete="/api/v1/series/{{ s.id }}"
+                        hx-confirm="Delete {{ s.title }}?"
+                        hx-target="closest .media-card"
+                        hx-swap="outerHTML"
+                        title="Delete">&#10005;</button>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <div class="empty-icon">&#128250;</div>
+    <p>No series in your library yet</p>
+    <button class="btn btn-primary" onclick="document.getElementById('add-series-modal').style.display='flex'">
+        Add Your First Series
+    </button>
+</div>
+{% endif %}
+
+<!-- Add Series Modal -->
+<div class="modal-overlay" id="add-series-modal" style="display:none;" onclick="if(event.target===this)this.style.display='none'">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Add Series</h3>
+            <button class="btn btn-icon btn-sm" onclick="document.getElementById('add-series-modal').style.display='none'">&#10005;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Search TMDB</label>
+                <div class="search-bar">
+                    <input type="text" id="series-search-input" placeholder="Series title..."
+                           hx-get="/web/search-tmdb-tv"
+                           hx-trigger="keyup changed delay:500ms"
+                           hx-target="#series-search-results"
+                           hx-include="this"
+                           name="q">
+                </div>
+            </div>
+            <div id="series-search-results"></div>
+
+            <form id="add-series-form" style="display:none;"
+                  hx-post="/web/add-series"
+                  hx-target="#main-content"
+                  hx-swap="innerHTML">
+                <input type="hidden" name="tvdb_id" id="series-tvdb-id">
+                <input type="hidden" name="tmdb_id" id="series-tmdb-id">
+                <input type="hidden" name="title" id="series-title-input">
+                <input type="hidden" name="year" id="series-year-input">
+                <input type="hidden" name="overview" id="series-overview-input">
+                <input type="hidden" name="poster_url" id="series-poster-input">
+
+                <div id="series-selected-info" class="mb-4"></div>
+
+                <div class="form-group">
+                    <label>Quality Profile</label>
+                    <select name="quality_profile_id">
+                        {% for p in profiles %}
+                        <option value="{{ p.id }}">{{ p.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Root Folder</label>
+                    <input type="text" name="root_folder" value="/tv">
+                </div>
+                <div class="modal-footer" style="padding: 12px 0 0;">
+                    <button type="button" class="btn" onclick="document.getElementById('add-series-modal').style.display='none'">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Series</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function selectSeries(tvdbId, tmdbId, title, year, overview, posterUrl) {
+    document.getElementById('series-tvdb-id').value = tvdbId;
+    document.getElementById('series-tmdb-id').value = tmdbId || '';
+    document.getElementById('series-title-input').value = title;
+    document.getElementById('series-year-input').value = year;
+    document.getElementById('series-overview-input').value = overview || '';
+    document.getElementById('series-poster-input').value = posterUrl || '';
+    document.getElementById('series-selected-info').innerHTML =
+        '<div class="flex gap-2 items-center" style="padding: 10px; background: rgba(34,248,251,0.05); border: 1px solid var(--border); border-radius: var(--radius);">' +
+        (posterUrl ? '<img src="' + posterUrl + '" style="width:50px;border-radius:4px;">' : '') +
+        '<div><strong style="color:#fff;">' + title + '</strong> <span class="text-muted">(' + year + ')</span>' +
+        '<div class="text-sm text-dim" style="margin-top:4px;max-height:40px;overflow:hidden;">' + (overview || '') + '</div></div></div>';
+    document.getElementById('add-series-form').style.display = 'block';
+    document.getElementById('series-search-results').innerHTML = '';
+}
+</script>
+{% endblock %}

@@ -1,7 +1,7 @@
 services:
-  sodar:
+  fathom:
     build: .
-    container_name: sodar
+    container_name: fathom
     restart: unless-stopped
     ports:
       - "8989:8989"
@@ -9,4 +9,4 @@ services:
       - ./data:/app/data
       - ./config.yaml:/app/config.yaml:ro
     environment:
-      - SODAR_DATABASE__PATH=/app/data/sodar.db
+      - FATHOM_DATABASE__PATH=/app/data/fathom.db

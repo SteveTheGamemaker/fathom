@@ -2,7 +2,7 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from sodar.models.base import Base
+from fathom.models.base import Base
 
 
 @pytest_asyncio.fixture
@@ -22,8 +22,8 @@ async def db_session():
 @pytest_asyncio.fixture
 async def client():
     """Async HTTP client with isolated in-memory DB and full lifespan."""
-    import sodar.database as db_module
-    from sodar.app import create_app
+    import fathom.database as db_module
+    from fathom.app import create_app
     from httpx import ASGITransport, AsyncClient
 
     # Replace module-level engine/session with in-memory
@@ -41,7 +41,7 @@ async def client():
     # Run lifespan manually (creates tables + seeds data + starts scheduler)
     async with app.router.lifespan_context(app):
         # Stop the scheduler during tests — we don't want background jobs firing
-        from sodar.scheduler.setup import stop_scheduler
+        from fathom.scheduler.setup import stop_scheduler
         stop_scheduler()
 
         transport = ASGITransport(app=app)

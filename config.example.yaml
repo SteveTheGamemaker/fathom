@@ -1,15 +1,15 @@
 server:
   host: "0.0.0.0"
   port: 8989
-  base_url: ""  # For reverse proxy, e.g. "/sodar"
+  base_url: ""  # For reverse proxy, e.g. "/fathom"
 
 database:
-  path: "./data/sodar.db"
+  path: "./data/fathom.db"
 
 llm:
   # Any OpenAI-compatible endpoint (OpenRouter, LiteLLM, local, etc.)
   base_url: "https://api.openai.com/v1"
-  api_key: ""  # Or set SODAR_LLM__API_KEY env var
+  api_key: ""  # Or set FATHOM_LLM__API_KEY env var
   model: "gpt-4o-mini"
   max_batch_size: 30
 
@@ -25,6 +25,14 @@ scheduler:
   rss_sync_interval_minutes: 15
   search_missing_interval_hours: 6
   import_check_interval_seconds: 60
+
+tmdb:
+  api_key: ""  # For movie/series metadata lookup
+
+notifications:
+  webhook_url: ""  # Discord/Slack-compatible webhook
+  on_grab: true
+  on_import: true
 
 auth:
   api_key: ""  # Protect the API; empty = no auth

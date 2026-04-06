@@ -17,34 +17,34 @@ class FakeClient:
 
 
 def test_make_downloader_qbittorrent():
-    from sodar.downloaders import make_downloader
+    from fathom.downloaders import make_downloader
     dl = make_downloader(FakeClient(type="qbittorrent"))
     assert dl is not None
     assert "QBittorrent" in type(dl).__name__
 
 
 def test_make_downloader_transmission():
-    from sodar.downloaders import make_downloader
+    from fathom.downloaders import make_downloader
     dl = make_downloader(FakeClient(type="transmission"))
     assert dl is not None
     assert "Transmission" in type(dl).__name__
 
 
 def test_make_downloader_sabnzbd():
-    from sodar.downloaders import make_downloader
+    from fathom.downloaders import make_downloader
     dl = make_downloader(FakeClient(type="sabnzbd", api_key="abc123"))
     assert dl is not None
     assert "SABnzbd" in type(dl).__name__
 
 
 def test_make_downloader_unknown():
-    from sodar.downloaders import make_downloader
+    from fathom.downloaders import make_downloader
     dl = make_downloader(FakeClient(type="foobar"))
     assert dl is None
 
 
 def test_notification_config():
-    from sodar.config import NotificationConfig
+    from fathom.config import NotificationConfig
     cfg = NotificationConfig()
     assert cfg.webhook_url == ""
     assert cfg.on_grab is True

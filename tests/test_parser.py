@@ -2,7 +2,7 @@
 
 import pytest
 
-from sodar.llm.parser import parse_releases
+from fathom.llm.parser import parse_releases
 
 
 @pytest.mark.asyncio

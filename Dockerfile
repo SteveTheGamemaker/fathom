@@ -19,6 +19,6 @@ RUN mkdir -p /app/data
 
 EXPOSE 8989
 
-ENV SODAR_DATABASE__PATH=/app/data/sodar.db
+ENV FATHOM_DATABASE__PATH=/app/data/fathom.db
 
-CMD ["python", "-m", "uvicorn", "sodar.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8989"]
+CMD ["python", "-m", "uvicorn", "fathom.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8989"]

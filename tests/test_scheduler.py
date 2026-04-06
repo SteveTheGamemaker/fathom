@@ -3,9 +3,9 @@
 import pytest
 from datetime import datetime, timezone
 
-from sodar.models.download import DownloadClient, DownloadRecord
-from sodar.models.media import Movie, MediaStatus
-from sodar.services.import_service import import_completed_download
+from fathom.models.download import DownloadClient, DownloadRecord
+from fathom.models.media import Movie, MediaStatus
+from fathom.services.import_service import import_completed_download
 
 
 @pytest.mark.asyncio
