@@ -135,7 +135,7 @@ async def parse_releases(
         return results
 
     # Step 2: LLM batch parse (primary)
-    if settings.llm.api_key:
+    if settings.llm.api_key or settings.llm.base_url:
         batch_size = settings.llm.max_batch_size
         llm_failed = []
 

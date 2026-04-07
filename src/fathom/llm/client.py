@@ -33,6 +33,12 @@ async def chat_json(
     client = get_llm_client()
     model = model or settings.llm.model
 
+    # Disable reasoning tokens to save compute — method depends on backend
+    if "openai.com" in settings.llm.base_url:
+        no_think = {"reasoning_effort": "none"}
+    else:
+        no_think = {"extra_body": {"chat_template_kwargs": {"enable_thinking": False}}}
+
     response = await client.chat.completions.create(
         model=model,
         temperature=temperature,
@@ -41,7 +47,11 @@ async def chat_json(
             {"role": "system", "content": system},
             {"role": "user", "content": user},
         ],
+        **no_think,
     )
 
     content = response.choices[0].message.content or "{}"
+    # Strip markdown code fences that some models wrap around JSON
+    if content.startswith("```"):
+        content = content.split("\n", 1)[1].rsplit("```", 1)[0]
     return json.loads(content)

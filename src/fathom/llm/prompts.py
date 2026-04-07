@@ -26,13 +26,20 @@ You are a media release name parser. Your job is to extract structured metadata 
 from torrent/usenet release names.
 
 For each release name, extract these fields:
-- title: The clean media title (no dots, underscores, or quality info). Capitalize normally.
+- title: The clean media title (no dots, underscores, or quality info). Capitalize normally. \
+  Do NOT include edition tags like "Directors Cut", "Extended", "Remastered", "Unrated", \
+  "IMAX", "HYBRID", etc. in the title — those are metadata, not part of the title.
 - year: Release year (integer) if present, otherwise null.
-- season: Season number (integer) if this is a TV release, otherwise null.
+- season: Season number (integer) if this is a TV release, otherwise null. \
+  For multi-season packs like "S01-S05 COMPLETE", set season to null (not the first season). \
+  But if only ONE season is specified (e.g. "S01 COMPLETE" or "S01E01-E10"), keep that season number.
 - episode: Episode number (integer) if this is a single episode, otherwise null. \
-  Null for full season packs.
+  Null for full season packs. Episode ranges like "E01-E05" or "E01E02" should use \
+  the first episode number. But if the release is marked COMPLETE, treat it as a \
+  season pack (episode=null).
 - quality: One of: {qualities}. Combine source and resolution to pick the best match. \
-  Use "unknown" only if you truly cannot determine it.
+  Use "unknown" only if you truly cannot determine it. \
+  IMPORTANT: Bare "WEB" (without "-DL" or "Rip") should be treated as "webdl", not "webrip".
 - codec: One of "h264", "h265", "av1", "mpeg2", "vc1", or null if not determinable.
 - source: One of "bluray", "webdl", "webrip", "hdtv", "dvd", "remux", or null.
 - resolution: One of "2160p", "1080p", "720p", "480p", or null.
