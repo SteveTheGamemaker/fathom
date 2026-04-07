@@ -9,6 +9,35 @@ from dataclasses import dataclass
 
 from fathom.models.quality import QualityProfile, QualityProfileItem
 
+# Resolution tiers — ensures 1080p is always ranked above 720p regardless of source.
+_RES_TIER: dict[str, int] = {"480p": 1, "720p": 2, "1080p": 3, "2160p": 4}
+
+# Source ranking within a resolution tier.
+# "any"  → physical sources (bluray/remux) preferred over web — current default.
+# "web"  → web sources (webdl/webrip) preferred over physical.
+_SOURCE_RANK: dict[str, dict[str, int]] = {
+    "any": {"sdtv": 1, "dvd": 1, "hdtv": 2, "webdl": 3, "webrip": 4, "bluray": 5, "remux": 6},
+    "web": {"sdtv": 1, "dvd": 1, "hdtv": 2, "bluray": 3, "remux": 4, "webdl": 5, "webrip": 6},
+}
+
+
+def _effective_score(quality_name: str, preferred_source: str) -> int:
+    """Resolution-aware score that respects source preference.
+
+    Scores are always higher for better resolutions (e.g. 1080p > 720p) and
+    within the same resolution, source preference decides the winner.
+    """
+    parts = quality_name.rsplit("-", 1)
+    if len(parts) == 2 and parts[1] in _RES_TIER:
+        source, resolution = parts[0], parts[1]
+    else:
+        source, resolution = quality_name, None
+
+    res_score = _RES_TIER.get(resolution, 0) * 10
+    rank_table = _SOURCE_RANK.get(preferred_source, _SOURCE_RANK["any"])
+    src_score = rank_table.get(source, 0)
+    return res_score + src_score
+
 
 @dataclass
 class MatchResult:
@@ -75,7 +104,7 @@ def rank_releases(
             raw_title=release.get("raw_title", ""),
             parsed_title=release.get("title", ""),
             quality=quality,
-            score=item.sort_order,
+            score=_effective_score(quality, getattr(profile, "preferred_source", "any")),
             meets_cutoff=meets_cutoff,
             is_upgrade=is_upgrade,
             is_proper=release.get("is_proper", False),

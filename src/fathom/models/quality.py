@@ -11,6 +11,9 @@ class QualityProfile(Base):
 
     name: Mapped[str] = mapped_column(String)
     cutoff: Mapped[str] = mapped_column(String)  # quality name to stop upgrading at
+    preferred_source: Mapped[str] = mapped_column(String, default="any", server_default="any")
+    # "any" = prefer physical (bluray/remux) over web, current default behaviour
+    # "web" = prefer web sources (webdl/webrip) over bluray/remux at the same resolution
 
     items: Mapped[list[QualityProfileItem]] = relationship(
         back_populates="profile",

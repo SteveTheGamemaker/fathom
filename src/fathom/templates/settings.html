@@ -111,7 +111,7 @@
     </div>
 </div>
 
-<!-- Quality Profiles (read-only for now) -->
+<!-- Quality Profiles -->
 <div class="card">
     <div class="card-header">
         <h2>Quality Profiles</h2>
@@ -123,6 +123,7 @@
                     <tr>
                         <th>Name</th>
                         <th>Cutoff</th>
+                        <th>Source Preference</th>
                         <th>Qualities</th>
                     </tr>
                 </thead>
@@ -131,6 +132,14 @@
                     <tr>
                         <td><strong style="color:#fff;">{{ p.name }}</strong></td>
                         <td><span class="badge badge-accent">{{ p.cutoff }}</span></td>
+                        <td>
+                            <select
+                                style="background:var(--bg-card);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 6px;font-size:0.85rem;cursor:pointer;"
+                                onchange="fetch('/api/v1/quality-profile/{{ p.id }}', {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({preferred_source:this.value})}).then(r => { if(!r.ok) { alert('Failed to save'); this.value = '{{ p.preferred_source }}'; } })">
+                                <option value="any" {% if p.preferred_source == 'any' %}selected{% endif %}>Any (BluRay/Remux preferred)</option>
+                                <option value="web" {% if p.preferred_source == 'web' %}selected{% endif %}>Prefer WEB (smaller files)</option>
+                            </select>
+                        </td>
                         <td class="text-muted text-sm">{{ p.items|length }} items</td>
                     </tr>
                     {% endfor %}

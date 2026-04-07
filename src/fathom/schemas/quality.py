@@ -16,6 +16,7 @@ class QualityProfileResponse(BaseModel):
     id: int
     name: str
     cutoff: str
+    preferred_source: str = "any"
     items: list[QualityProfileItemResponse] = []
 
     model_config = {"from_attributes": True}
@@ -30,10 +31,12 @@ class QualityProfileItemCreate(BaseModel):
 class QualityProfileCreate(BaseModel):
     name: str
     cutoff: str
+    preferred_source: str = "any"
     items: list[QualityProfileItemCreate]
 
 
 class QualityProfileUpdate(BaseModel):
     name: str | None = None
     cutoff: str | None = None
+    preferred_source: str | None = None
     items: list[QualityProfileItemCreate] | None = None

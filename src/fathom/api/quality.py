@@ -42,7 +42,7 @@ async def create_profile(
     data: QualityProfileCreate,
     session: AsyncSession = Depends(get_db_session),
 ):
-    profile = QualityProfile(name=data.name, cutoff=data.cutoff)
+    profile = QualityProfile(name=data.name, cutoff=data.cutoff, preferred_source=data.preferred_source)
     session.add(profile)
     await session.flush()
     for item_data in data.items:
@@ -80,6 +80,8 @@ async def update_profile(
         profile.name = data.name
     if data.cutoff is not None:
         profile.cutoff = data.cutoff
+    if data.preferred_source is not None:
+        profile.preferred_source = data.preferred_source
 
     if data.items is not None:
         # Replace all items
