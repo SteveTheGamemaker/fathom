@@ -20,6 +20,8 @@ from fathom.scheduler.rss_sync import (
     _get_enabled_download_client,
     _grab_best,
     _search_indexer,
+    _search_movie_indexer,
+    _top_results,
 )
 from fathom.llm.parser import parse_releases
 
@@ -44,16 +46,6 @@ async def search_missing_job() -> None:
             log.debug("Search missing: no enabled download client")
             return
 
-        # Check if there's already an active download — skip if queue is busy
-        active = await session.execute(
-            select(DownloadRecord)
-            .where(DownloadRecord.status.in_(["queued", "downloading"]))
-            .limit(1)
-        )
-        if active.scalars().first():
-            log.debug("Search missing: active downloads exist, skipping")
-            return
-
         # --- Missing movies ---
         movies_result = await session.execute(
             select(Movie)
@@ -69,7 +61,7 @@ async def search_missing_job() -> None:
             existing = await session.execute(
                 select(DownloadRecord)
                 .where(DownloadRecord.movie_id == movie.id)
-                .where(DownloadRecord.status.in_(["queued", "downloading"]))
+                .where(DownloadRecord.status != "failed")
                 .limit(1)
             )
             if existing.scalars().first():
@@ -78,9 +70,10 @@ async def search_missing_job() -> None:
             query = f"{movie.title} {movie.year}"
             all_results = []
             for indexer in indexers:
-                results = await _search_indexer(indexer, query)
+                results = await _search_movie_indexer(indexer, query, movie.imdb_id)
                 all_results.extend(results)
 
+            all_results = _top_results(all_results)
             if not all_results:
                 continue
 
@@ -115,7 +108,7 @@ async def search_missing_job() -> None:
                     existing = await session.execute(
                         select(DownloadRecord)
                         .where(DownloadRecord.episode_id == ep.id)
-                        .where(DownloadRecord.status.in_(["queued", "downloading"]))
+                        .where(DownloadRecord.status != "failed")
                         .limit(1)
                     )
                     if existing.scalars().first():
@@ -127,6 +120,7 @@ async def search_missing_job() -> None:
                         results = await _search_indexer(indexer, query)
                         all_results.extend(results)
 
+                    all_results = _top_results(all_results)
                     if not all_results:
                         continue
 

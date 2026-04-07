@@ -52,6 +52,22 @@ async def _search_indexer(indexer: Indexer, query: str) -> list:
         await client.close()
 
 
+async def _search_movie_indexer(indexer: Indexer, query: str, imdb_id: str | None) -> list:
+    client = _make_indexer_client(indexer)
+    try:
+        return await client.search_movie(query, imdb_id=imdb_id)
+    except Exception:
+        log.exception("RSS sync: indexer %s movie search failed", indexer.name)
+        return []
+    finally:
+        await client.close()
+
+
+def _top_results(results: list, limit: int = 10) -> list:
+    """Return the top N results by seeder count."""
+    return sorted(results, key=lambda r: r.seeders or 0, reverse=True)[:limit]
+
+
 async def _grab_best(
     session,
     results: list,
@@ -172,12 +188,23 @@ async def rss_sync_job() -> None:
         movies = movies_result.scalars().all()
 
         for movie in movies:
+            # Skip if there's already a non-failed download for this movie
+            existing = await session.execute(
+                select(DownloadRecord)
+                .where(DownloadRecord.movie_id == movie.id)
+                .where(DownloadRecord.status != "failed")
+                .limit(1)
+            )
+            if existing.scalars().first():
+                continue
+
             query = f"{movie.title} {movie.year}"
             all_results = []
             for indexer in indexers:
-                results = await _search_indexer(indexer, query)
+                results = await _search_movie_indexer(indexer, query, movie.imdb_id)
                 all_results.extend(results)
 
+            all_results = _top_results(all_results)
             if not all_results:
                 continue
 
@@ -208,12 +235,22 @@ async def rss_sync_job() -> None:
                     continue
                 missing_eps = [ep for ep in season.episodes if ep.monitored and not ep.file_path]
                 for ep in missing_eps:
+                    existing = await session.execute(
+                        select(DownloadRecord)
+                        .where(DownloadRecord.episode_id == ep.id)
+                        .where(DownloadRecord.status != "failed")
+                        .limit(1)
+                    )
+                    if existing.scalars().first():
+                        continue
+
                     query = f"{series.title} S{season.season_number:02d}E{ep.episode_number:02d}"
                     all_results = []
                     for indexer in indexers:
                         results = await _search_indexer(indexer, query)
                         all_results.extend(results)
 
+                    all_results = _top_results(all_results)
                     if not all_results:
                         continue
 
